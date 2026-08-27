@@ -1,0 +1,49 @@
+# Utterance-level cross-dataset detector baseline performance
+#
+# Full experiment:
+#   LibriSpeech -> train f_D^L -> eval LibriSpeech + TIMIT
+#   TIMIT       -> train f_D^T -> eval TIMIT + LibriSpeech
+#
+# Metrics:
+#   Accuracy, Precision, Recall/adversarial detection rate, F1, AUROC, FRD, clean_benign_rate,
+#   and speaker_fooling_rate for each baseline attack.
+
+python cross_dataset_detector_baseline_utterance.py \
+  --train_domain all \
+  --timit_data_root /Data/chenyuying/TIMIT/ \
+  --libri_data_root /Data/chenyuying \
+  --timit_speaker_model ./speaker_model/SincNet_TIMIT/model_raw.pkl \
+  --timit_speaker_cfg ./config/timit_speaker_generator.cfg \
+  --libri_speaker_model ./speaker_model/SincNet_LIBRI/epoch_23.pth \
+  --libri_speaker_cfg ./config/libri_speaker_generator.cfg \
+  --attacks bim pgd gaussian \
+  --epsilon 0.1 \
+  --attack_alpha 0.002 \
+  --attack_steps 10 \
+  --epochs 10 \
+  --batch_size 8 \
+  --train_max_frames 12 \
+  --eval_max_frames 0 \
+  --output_dir ./output/cross_dataset_detector_baseline_utterance
+
+# Quick debug version:
+# Use fewer epochs and only the first 100 test utterances.
+
+python cross_dataset_detector_baseline_utterance.py \
+  --train_domain all \
+  --timit_data_root /Data/chenyuying/TIMIT/ \
+  --libri_data_root /Data/chenyuying \
+  --timit_speaker_model ./speaker_model/SincNet_TIMIT/model_raw.pkl \
+  --timit_speaker_cfg ./config/timit_speaker_generator.cfg \
+  --libri_speaker_model ./speaker_model/SincNet_LIBRI/epoch_23.pth \
+  --libri_speaker_cfg ./config/libri_speaker_generator.cfg \
+  --attacks bim pgd gaussian \
+  --epsilon 0.1 \
+  --attack_alpha 0.002 \
+  --attack_steps 10 \
+  --epochs 1 \
+  --batch_size 4 \
+  --train_max_frames 6 \
+  --eval_max_frames 6 \
+  --max_eval_files 100 \
+  --output_dir ./output/cross_dataset_detector_baseline_utterance_debug

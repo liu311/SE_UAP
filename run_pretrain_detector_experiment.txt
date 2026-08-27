@@ -1,0 +1,35 @@
+python pretrain_detector_experiment.py \
+  --train_domain timit \
+  --timit_data_root /Data/chenyuying/TIMIT/ \
+  --libri_data_root /Data/chenyuying \
+  --timit_speaker_model ./speaker_model/SincNet_TIMIT/model_raw.pkl \
+  --timit_speaker_cfg ./config/timit_speaker_generator.cfg \
+  --attacks bim pgd \
+  --epochs 10 \
+  --batch_size 128 \
+  --output_dir ./output/pretrain_detector
+
+python pretrain_detector_experiment.py \
+  --train_domain libri \
+  --timit_data_root /Data/chenyuying/TIMIT/ \
+  --libri_data_root /Data/chenyuying \
+  --libri_speaker_model ./speaker_model/SincNet_LIBRI/epoch_23.pth \
+  --libri_speaker_cfg ./config/libri_speaker_generator.cfg \
+  --attacks bim pgd \
+  --epochs 50 \
+  --batch_size 16 \
+  --output_dir ./output/pretrain_detector
+
+python pretrain_detector_experiment.py \
+  --train_domain all \
+  --timit_data_root /Data/chenyuying/TIMIT/ \
+  --libri_data_root /Data/chenyuying \
+  --timit_speaker_model ./speaker_model/SincNet_TIMIT/model_raw.pkl \
+  --timit_speaker_cfg ./config/timit_speaker_generator.cfg \
+  --libri_speaker_model ./speaker_model/SincNet_LIBRI/epoch_23.pth \
+  --libri_speaker_cfg ./config/libri_speaker_generator.cfg \
+  --attacks gaussian \
+  --epsilon 0.1 \
+  --epochs 10 \
+  --batch_size 128 \
+  --output_dir ./output/pretrain_detector_gaussian

@@ -1,0 +1,124 @@
+# SE-UAP main experiment using pre-trained Transformer-based utterance-level detectors.
+#
+# Cross-dataset setting:
+#   Attack TIMIT       -> use LibriSpeech-trained Transformer detector
+#   Attack LibriSpeech -> use TIMIT-trained Transformer detector
+#
+# Expected detector checkpoints from pretrain_detector_experiment.py:
+#   ./output/pretrain_transformer_detector_utterance/transformer_utterance_detector_trained_on_libri.pth
+#   ./output/pretrain_transformer_detector_utterance/transformer_utterance_detector_trained_on_timit.pth
+#
+# SE-UAP objective:
+#   L = L_rec + alpha * L_det + lambda_energy * E_raw(delta_tilde)
+#
+# E_raw options:
+#   raw_relative: raw_power / reference_power
+#   target_snr  : relu(raw_power / reference_power - 10^(-target_snr/10))^2
+#
+# With the settings below, checkpoints are saved as:
+#   se_uap_timit_tau3_le1_k0_z2_bs512_seed1234_best.pth
+#   se_uap_libri_tau3_le1_k0_z2_bs512_seed1234_best.pth
+
+python train_se_uap_main_experiment.py \
+  --mode train \
+  --dataset timit \
+  --data_root /Data/chenyuying/TIMIT/ \
+  --speaker_model ./speaker_model/SincNet_TIMIT/model_raw.pkl \
+  --speaker_cfg ./config/timit_speaker_generator.cfg \
+  --libri_pretrained_detector ./output/pretrain_transformer_detector_utterance/transformer_utterance_detector_trained_on_libri.pth \
+  --uap_dim 3200 \
+  --train_objective utterance \
+  --train_wshift 3200 \
+  --eval_wshift 3200 \
+  --eval_pool_mode deterministic \
+  --train_max_frames 0 \
+  --constraint_scope base \
+  --kappa 0.0 \
+  --num_z 2 \
+  --val_fraction 0.1 \
+  --val_frd_weight 0.25 \
+  --best_min_frd 0.9 \
+  --best_min_snr 10 \
+  --epochs 10 \
+  --batch_size 512 \
+  --tau 3 \
+  --alpha 0.1 \
+  --lambda_energy 1.0 \
+  --energy_loss_type target_snr \
+  --target_snr 10 \
+  --output_dir ./output/se_uap_main_timit_transformer_detector
+
+python train_se_uap_main_experiment.py \
+  --mode train \
+  --dataset libri \
+  --data_root /Data/chenyuying \
+  --speaker_model ./speaker_model/SincNet_LIBRI/epoch_23.pth \
+  --speaker_cfg ./config/libri_speaker_generator.cfg \
+  --timit_pretrained_detector ./output/pretrain_transformer_detector_utterance/transformer_utterance_detector_trained_on_timit.pth \
+  --uap_dim 3200 \
+  --train_objective utterance \
+  --train_wshift 3200 \
+  --eval_wshift 3200 \
+  --eval_pool_mode deterministic \
+  --train_max_frames 0 \
+  --constraint_scope base \
+  --kappa 0.0 \
+  --num_z 2 \
+  --val_fraction 0.1 \
+  --val_frd_weight 0.25 \
+  --best_min_frd 0.9 \
+  --best_min_snr 10 \
+  --epochs 10 \
+  --batch_size 512 \
+  --tau 3 \
+  --alpha 0.1 \
+  --lambda_energy 1.0 \
+  --energy_loss_type target_snr \
+  --target_snr 10 \
+  --output_dir ./output/se_uap_main_libri_transformer_detector
+
+# Test-only examples:
+
+python train_se_uap_main_experiment.py \
+  --mode test \
+  --dataset timit \
+  --data_root /Data/chenyuying/TIMIT/ \
+  --speaker_model ./speaker_model/SincNet_TIMIT/model_raw.pkl \
+  --speaker_cfg ./config/timit_speaker_generator.cfg \
+  --libri_pretrained_detector ./output/pretrain_transformer_detector_utterance/transformer_utterance_detector_trained_on_libri.pth \
+  --uap_dim 3200 \
+  --eval_wshift 3200 \
+  --constraint_scope base \
+  --kappa 0.0 \
+  --num_z 2 \
+  --batch_size 512 \
+  --tau 3 \
+  --alpha 0.1 \
+  --lambda_energy 1.0 \
+  --energy_loss_type target_snr \
+  --target_snr 10 \
+  --eval_pool_mode deterministic \
+  --test_ckpt ./output/se_uap_main_timit_transformer_detector/se_uap_timit_tau3_le1_k0_z2_bs512_seed1234_best.pth \
+  --output_dir ./output/se_uap_main_timit_transformer_detector
+
+python train_se_uap_main_experiment.py \
+  --mode test \
+  --dataset libri \
+  --data_root /Data/chenyuying \
+  --speaker_model ./speaker_model/SincNet_LIBRI/epoch_23.pth \
+  --speaker_cfg ./config/libri_speaker_generator.cfg \
+  --timit_pretrained_detector ./output/pretrain_transformer_detector_utterance/transformer_utterance_detector_trained_on_timit.pth \
+  --uap_dim 3200 \
+  --eval_wshift 3200 \
+  --constraint_scope base \
+  --kappa 0.0 \
+  --num_z 2 \
+  --batch_size 512 \
+  --tau 3 \
+  --alpha 0.1 \
+  --lambda_energy 1.0 \
+  --energy_loss_type target_snr \
+  --target_snr 10 \
+  --eval_pool_mode deterministic \
+  --test_ckpt ./output/se_uap_main_libri_transformer_detector/se_uap_libri_tau3_le1_k0_z2_bs512_seed1234_best.pth \
+  --output_dir ./output/se_uap_main_libri_transformer_detector

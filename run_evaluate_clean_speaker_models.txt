@@ -1,0 +1,10 @@
+python evaluate_clean_speaker_models.py \
+  --dataset all \
+  --timit_data_root /Data/chenyuying/TIMIT/ \
+  --timit_speaker_model ./speaker_model/SincNet_TIMIT/model_raw.pkl \
+  --timit_speaker_cfg ./config/timit_speaker_generator.cfg \
+  --libri_data_root /Data/chenyuying \
+  --libri_speaker_model ./speaker_model/SincNet_LIBRI/epoch_23.pth \
+  --libri_speaker_cfg ./config/libri_speaker_generator.cfg \
+  --batch_size 128 \
+  --output_dir ./output/clean_speaker_eval

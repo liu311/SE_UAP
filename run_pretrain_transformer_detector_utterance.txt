@@ -1,0 +1,45 @@
+# Transformer-based utterance-level detector pretraining and cross-dataset evaluation
+#
+# This command trains:
+#   LibriSpeech -> f_D^L -> eval LibriSpeech + TIMIT
+#   TIMIT       -> f_D^T -> eval TIMIT + LibriSpeech
+#
+# Detector:
+#   --detector_type transformer
+#   --training_level utterance
+#
+# Metrics:
+#   detector_all_adv_accuracy / precision / recall / f1 / auroc
+#   detector_success_adv_accuracy / precision / recall / f1 / auroc
+#   speaker_fooling_rate
+
+python pretrain_detector_experiment.py \
+  --training_level utterance \
+  --detector_type transformer \
+  --eval_cross_dataset \
+  --train_domain all \
+  --timit_data_root /Data/chenyuying/TIMIT/ \
+  --libri_data_root /Data/chenyuying \
+  --timit_speaker_model ./speaker_model/SincNet_TIMIT/model_raw.pkl \
+  --timit_speaker_cfg ./config/timit_speaker_generator.cfg \
+  --libri_speaker_model ./speaker_model/SincNet_LIBRI/epoch_23.pth \
+  --libri_speaker_cfg ./config/libri_speaker_generator.cfg \
+  --attacks bim pgd gaussian \
+  --epsilon 0.1 \
+  --alpha 0.002 \
+  --steps 10 \
+  --epochs 10 \
+  --batch_size 4 \
+  --train_wshift 3200 \
+  --eval_wshift 3200 \
+  --train_max_frames 12 \
+  --eval_max_frames 0 \
+  --transformer_patch_size 80 \
+  --transformer_embed_dim 128 \
+  --transformer_heads 4 \
+  --transformer_layers 3 \
+  --transformer_ff_dim 256 \
+  --transformer_dropout 0.1 \
+  --output_dir ./output/pretrain_transformer_detector_utterance
+
+

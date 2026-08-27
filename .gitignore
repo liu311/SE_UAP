@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+
+# Large model and generated data artifacts
+*.pkl
+*.pth
+*.npy
+*.npz
+
+# Experiment outputs and logs
+output/
+runs/
+*.log
+
+# Local editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

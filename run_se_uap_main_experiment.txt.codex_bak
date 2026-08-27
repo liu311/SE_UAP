@@ -1,0 +1,84 @@
+# SE-UAP main experiment using pre-trained Transformer-based utterance-level detectors.
+#
+# Cross-dataset setting:
+#   Attack TIMIT       -> use LibriSpeech-trained Transformer detector
+#   Attack LibriSpeech -> use TIMIT-trained Transformer detector
+#
+# Expected detector checkpoints from pretrain_detector_experiment.py:
+#   ./output/pretrain_transformer_detector_utterance/transformer_utterance_detector_trained_on_libri.pth
+#   ./output/pretrain_transformer_detector_utterance/transformer_utterance_detector_trained_on_timit.pth
+#
+# SE-UAP objective:
+#   L = L_rec + alpha * L_det + gamma * ||x_adv - x||_2^2 / ||x||_2^2
+
+python train_se_uap_main_experiment.py \
+  --mode train \
+  --dataset timit \
+  --data_root /Data/chenyuying/TIMIT/ \
+  --speaker_model ./speaker_model/SincNet_TIMIT/model_raw.pkl \
+  --speaker_cfg ./config/timit_speaker_generator.cfg \
+  --libri_pretrained_detector ./output/pretrain_transformer_detector_utterance/transformer_utterance_detector_trained_on_libri.pth \
+  --train_objective utterance \
+  --train_wshift 3200 \
+  --eval_wshift 3200 \
+  --train_max_frames 0 \
+  --constraint_scope base \
+  --kappa 0.0 \
+  --num_z 2 \
+  --val_fraction 0.1 \
+  --val_frd_weight 0.25 \
+  --best_min_frd 0.9 \
+  --epochs 10 \
+  --batch_size 512 \
+  --tau 3 \
+  --alpha 0.1 \
+  --gamma 1.0 \
+  --output_dir ./output/se_uap_main_timit_transformer_detector
+
+python train_se_uap_main_experiment.py \
+  --mode train \
+  --dataset libri \
+  --data_root /Data/chenyuying \
+  --speaker_model ./speaker_model/SincNet_LIBRI/epoch_23.pth \
+  --speaker_cfg ./config/libri_speaker_generator.cfg \
+  --timit_pretrained_detector ./output/pretrain_transformer_detector_utterance/transformer_utterance_detector_trained_on_timit.pth \
+  --train_objective utterance \
+  --train_wshift 3200 \
+  --eval_wshift 3200 \
+  --train_max_frames 0 \
+  --constraint_scope base \
+  --kappa 0.0 \
+  --num_z 2 \
+  --val_fraction 0.1 \
+  --val_frd_weight 0.25 \
+  --best_min_frd 0.9 \
+  --epochs 10 \
+  --batch_size 512 \
+  --tau 3 \
+  --alpha 0.1 \
+  --gamma 1.0 \
+  --output_dir ./output/se_uap_main_libri_transformer_detector
+
+# Test-only examples:
+
+python train_se_uap_main_experiment.py \
+  --mode test \
+  --dataset timit \
+  --data_root /Data/chenyuying/TIMIT/ \
+  --speaker_model ./speaker_model/SincNet_TIMIT/model_raw.pkl \
+  --speaker_cfg ./config/timit_speaker_generator.cfg \
+  --libri_pretrained_detector ./output/pretrain_transformer_detector_utterance/transformer_utterance_detector_trained_on_libri.pth \
+  --constraint_scope base \
+  --test_ckpt ./output/se_uap_main_timit_transformer_detector/se_uap_generator_timit_best.pth \
+  --output_dir ./output/se_uap_main_timit_transformer_detector
+
+python train_se_uap_main_experiment.py \
+  --mode test \
+  --dataset libri \
+  --data_root /Data/chenyuying \
+  --speaker_model ./speaker_model/SincNet_LIBRI/epoch_23.pth \
+  --speaker_cfg ./config/libri_speaker_generator.cfg \
+  --timit_pretrained_detector ./output/pretrain_transformer_detector_utterance/transformer_utterance_detector_trained_on_timit.pth \
+  --constraint_scope base \
+  --test_ckpt ./output/se_uap_main_libri_transformer_detector/se_uap_generator_libri_best.pth \
+  --output_dir ./output/se_uap_main_libri_transformer_detector
