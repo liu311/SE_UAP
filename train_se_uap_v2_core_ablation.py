@@ -11,6 +11,10 @@ recognition objective, checkpoint selection, and evaluation protocol unchanged.
 The detector is always evaluated; --detector_loss only controls whether L_D is
 part of the training objective.
 
+Follow-up controls isolate two optimization changes for Distribution / L_D on:
+    - --detector_aggregation mean_logit aligns training with utterance evaluation.
+    - --utterance_grad_clip enables gradient clipping only in utterance training.
+
 This script is a drop-in replacement for train_se_uap_main_experiment.py. It keeps the
 manuscript's theoretical framework intact:
 
@@ -97,7 +101,11 @@ def build_uap_model(args, device):
 
 
 def ablation_tag(args) -> str:
-    return f"{args.uap_family}_detector_{args.detector_loss}"
+    clip_tag = "ugradclip" if args.utterance_grad_clip else "no_ugradclip"
+    return (
+        f"{args.uap_family}_detector_{args.detector_loss}_"
+        f"{args.detector_aggregation}_{clip_tag}"
+    )
 
 
 def add_boolean_argument(parser, name: str, default: bool, help_text: str):
@@ -249,6 +257,23 @@ def detection_evasion_loss(detector_logits: torch.Tensor, beta: float, eps: floa
     return (torch.exp(beta * (-torch.log(benign_prob))) - 1.0).mean()
 
 
+def utterance_detection_evasion_loss(detector_logits: torch.Tensor, args):
+    """Aggregate frame outputs before applying the utterance detector loss."""
+    if args.detector_aggregation == "mean_logit":
+        utterance_logits = detector_logits.mean(dim=0, keepdim=True)
+        return detection_evasion_loss(
+            utterance_logits, beta=args.beta, eps=args.detector_eps
+        )
+
+    # Backward-compatible behavior: average benign probabilities first.
+    benign_prob = (
+        torch.softmax(detector_logits, dim=1)[:, BENIGN_LABEL]
+        .mean()
+        .clamp_min(args.detector_eps)
+    )
+    return torch.exp(args.beta * (-torch.log(benign_prob))) - 1.0
+
+
 # --------------------------------------------------------------------------- #
 # Framing helpers
 # --------------------------------------------------------------------------- #
@@ -378,10 +403,7 @@ def utterance_attack_loss(model, adv_audio: torch.Tensor, label: torch.Tensor,
     logits = utterance_frame_logits(model, adv_audio, args)
 
     if use_detector_loss:
-        probs = torch.softmax(logits, dim=1)
-        benign_prob = probs[:, BENIGN_LABEL].mean().clamp_min(args.detector_eps)
-        loss = torch.exp(args.beta * (-torch.log(benign_prob))) - 1.0
-        return loss, logits
+        return utterance_detection_evasion_loss(logits, args), logits
 
     utterance_logits = logits.mean(dim=0, keepdim=True)
     loss_utt = recognition_attack_loss(utterance_logits, label.view(1), args.kappa)
@@ -632,6 +654,12 @@ def train_one_epoch_utterance(generator, speaker_model, detector, loader, optimi
 
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
+        grad_norm = None
+        if args.utterance_grad_clip:
+            grad_norm = torch.nn.utils.clip_grad_norm_(
+                generator.parameters(),
+                max_norm=args.grad_clip,
+            )
         optimizer.step()
 
         values = {
@@ -644,6 +672,9 @@ def train_one_epoch_utterance(generator, speaker_model, detector, loader, optimi
             "delta_linf": float(np.mean(linf_items)),
             "tau": tau,
         }
+        if grad_norm is not None:
+            # clip_grad_norm_ returns the total norm before clipping.
+            values["grad_norm"] = float(grad_norm.item())
         avg.update(values, {key: batch_size * args.num_z for key in values})
         pbar.set_postfix(loss=f"{loss.item():.4f}",
                          fr=f"{values['train_fr']:.3f}",
@@ -878,6 +909,9 @@ def write_eval_results(metrics: Dict, args, detector_meta: Dict):
         "dataset",
         "uap_family",
         "detector_loss",
+        "detector_aggregation",
+        "utterance_grad_clip",
+        "grad_clip",
         "effective_alpha",
         "detector_model",
         "detector_type",
@@ -909,6 +943,9 @@ def write_eval_results(metrics: Dict, args, detector_meta: Dict):
         "dataset": args.dataset,
         "uap_family": args.uap_family,
         "detector_loss": args.detector_loss,
+        "detector_aggregation": args.detector_aggregation,
+        "utterance_grad_clip": args.utterance_grad_clip,
+        "grad_clip": args.grad_clip,
         "effective_alpha": args.effective_alpha,
         "detector_model": resolve_detector_path(args),
         "detector_type": detector_meta["detector_type"],
@@ -956,6 +993,18 @@ def parse_args():
         choices=["off", "on"],
         required=True,
         help="whether alpha * L_D is included in the training objective",
+    )
+    parser.add_argument(
+        "--detector_aggregation",
+        choices=["mean_probability", "mean_logit"],
+        default="mean_probability",
+        help="aggregate detector frame outputs before the utterance detector loss",
+    )
+    add_boolean_argument(
+        parser,
+        "--utterance_grad_clip",
+        default=False,
+        help_text="apply --grad_clip to generator gradients in utterance training",
     )
     parser.add_argument("--data_root", type=str, required=True)
     parser.add_argument("--speaker_model", type=str, default=None)
@@ -1089,6 +1138,8 @@ def main():
         raise ValueError("--num_z must be positive")
     if args.detector_loss == "on" and args.alpha <= 0:
         raise ValueError("--alpha must be positive when --detector_loss on")
+    if args.utterance_grad_clip and args.grad_clip <= 0:
+        raise ValueError("--grad_clip must be positive when --utterance_grad_clip is enabled")
     args.effective_alpha = args.alpha if args.detector_loss == "on" else 0.0
     seed_all(args.seed)
     device = torch.device(args.device)
@@ -1137,6 +1188,8 @@ def main():
     print(
         f"Core ablation: uap_family={args.uap_family}, "
         f"detector_loss={args.detector_loss}, effective_alpha={args.effective_alpha}, "
+        f"detector_aggregation={args.detector_aggregation}, "
+        f"utterance_grad_clip={args.utterance_grad_clip}, grad_clip={args.grad_clip}, "
         f"trainable_parameters={trainable_parameters}"
     )
 
@@ -1183,7 +1236,9 @@ def main():
         f"frame_loss_weight={args.frame_loss_weight}, "
         f"frame_random_offset={args.frame_random_offset}, batch_size={args.batch_size}, "
         f"uap_family={args.uap_family}, detector_loss={args.detector_loss}, "
-        f"effective_alpha={args.effective_alpha}"
+        f"effective_alpha={args.effective_alpha}, "
+        f"detector_aggregation={args.detector_aggregation}, "
+        f"utterance_grad_clip={args.utterance_grad_clip}, grad_clip={args.grad_clip}"
     )
 
     if args.mode == "train":
@@ -1262,6 +1317,9 @@ def main():
                             "effective_alpha": args.effective_alpha,
                             "uap_family": args.uap_family,
                             "detector_loss": args.detector_loss,
+                            "detector_aggregation": args.detector_aggregation,
+                            "utterance_grad_clip": args.utterance_grad_clip,
+                            "grad_clip": args.grad_clip,
                             "constraint_scope": args.constraint_scope,
                             "random_phase": args.random_phase,
                             "shaping_npy": args.shaping_npy,
@@ -1290,6 +1348,9 @@ def main():
                 "effective_alpha": args.effective_alpha,
                 "uap_family": args.uap_family,
                 "detector_loss": args.detector_loss,
+                "detector_aggregation": args.detector_aggregation,
+                "utterance_grad_clip": args.utterance_grad_clip,
+                "grad_clip": args.grad_clip,
                 "constraint_scope": args.constraint_scope,
                 "random_phase": args.random_phase,
                 "shaping_npy": args.shaping_npy,

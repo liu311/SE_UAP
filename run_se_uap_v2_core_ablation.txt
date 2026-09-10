@@ -1,0 +1,156 @@
+# Follow-up experiments for Distribution / L_D on.
+# Round 1 changes only detector aggregation to mean-logit and keeps utterance
+# gradient clipping disabled. Round 2 keeps Round 1 unchanged and enables
+# utterance gradient clipping with max norm 5.
+
+# ---------------------------------------------------------------------------
+# TIMIT - Round 1: mean-logit detector aggregation, no utterance grad clip
+# ---------------------------------------------------------------------------
+python train_se_uap_v2_core_ablation.py \
+  --mode train \
+  --dataset timit \
+  --uap_family distribution \
+  --detector_loss on \
+  --detector_aggregation mean_logit \
+  --no_utterance_grad_clip \
+  --data_root /Data/chenyuying/TIMIT/ \
+  --speaker_model ./speaker_model/SincNet_TIMIT/model_raw.pkl \
+  --speaker_cfg ./config/timit_speaker_generator.cfg \
+  --libri_pretrained_detector ./output/pretrain_transformer_detector_utterance/transformer_utterance_detector_trained_on_libri.pth \
+  --train_objective utterance \
+  --eval_protocol utterance \
+  --train_wshift 3200 \
+  --eval_wshift 3200 \
+  --train_max_frames 16 \
+  --frame_loss_weight 0 \
+  --frame_random_offset \
+  --constraint_scope base \
+  --tau 1.7 \
+  --tau_start 1.7 \
+  --tau_schedule const \
+  --kappa 1.0 \
+  --alpha 0.1 \
+  --num_z 4 \
+  --random_phase \
+  --grad_clip 5 \
+  --batch_size 64 \
+  --epochs 20 \
+  --val_fraction 0.1 \
+  --pool_size 5 \
+  --pool_candidates 5 \
+  --device cuda:0 \
+  --output_dir ./output/core_ablation_timit_distribution_ld_on_meanlogit
+
+# ---------------------------------------------------------------------------
+# TIMIT - Round 2: Round 1 + utterance grad clip
+# ---------------------------------------------------------------------------
+python train_se_uap_v2_core_ablation.py \
+  --mode train \
+  --dataset timit \
+  --uap_family distribution \
+  --detector_loss on \
+  --detector_aggregation mean_logit \
+  --utterance_grad_clip \
+  --data_root /Data/chenyuying/TIMIT/ \
+  --speaker_model ./speaker_model/SincNet_TIMIT/model_raw.pkl \
+  --speaker_cfg ./config/timit_speaker_generator.cfg \
+  --libri_pretrained_detector ./output/pretrain_transformer_detector_utterance/transformer_utterance_detector_trained_on_libri.pth \
+  --train_objective utterance \
+  --eval_protocol utterance \
+  --train_wshift 3200 \
+  --eval_wshift 3200 \
+  --train_max_frames 16 \
+  --frame_loss_weight 0 \
+  --frame_random_offset \
+  --constraint_scope base \
+  --tau 1.7 \
+  --tau_start 1.7 \
+  --tau_schedule const \
+  --kappa 1.0 \
+  --alpha 0.1 \
+  --num_z 4 \
+  --random_phase \
+  --grad_clip 5 \
+  --batch_size 64 \
+  --epochs 20 \
+  --val_fraction 0.1 \
+  --pool_size 5 \
+  --pool_candidates 5 \
+  --device cuda:0 \
+  --output_dir ./output/core_ablation_timit_distribution_ld_on_meanlogit_gradclip5
+
+# ---------------------------------------------------------------------------
+# LibriSpeech - Round 1: mean-logit detector aggregation, no utterance grad clip
+# ---------------------------------------------------------------------------
+python train_se_uap_v2_core_ablation.py \
+  --mode train \
+  --dataset libri \
+  --uap_family distribution \
+  --detector_loss on \
+  --detector_aggregation mean_logit \
+  --no_utterance_grad_clip \
+  --data_root /Data/chenyuying \
+  --speaker_model ./speaker_model/SincNet_LIBRI/epoch_23.pth \
+  --speaker_cfg ./config/libri_speaker_generator.cfg \
+  --timit_pretrained_detector ./output/pretrain_transformer_detector_utterance/transformer_utterance_detector_trained_on_timit.pth \
+  --train_objective utterance \
+  --eval_protocol utterance \
+  --train_wshift 3200 \
+  --eval_wshift 3200 \
+  --train_max_frames 16 \
+  --frame_loss_weight 0 \
+  --frame_random_offset \
+  --constraint_scope base \
+  --tau 2.0 \
+  --tau_start 2.0 \
+  --tau_schedule const \
+  --kappa 1.0 \
+  --alpha 0.1 \
+  --num_z 4 \
+  --random_phase \
+  --grad_clip 5 \
+  --batch_size 64 \
+  --epochs 20 \
+  --val_fraction 0.1 \
+  --pool_size 5 \
+  --pool_candidates 5 \
+  --device cuda:1 \
+  --output_dir ./output/core_ablation_libri_distribution_ld_on_meanlogit
+
+# ---------------------------------------------------------------------------
+# LibriSpeech - Round 2: Round 1 + utterance grad clip
+# ---------------------------------------------------------------------------
+python train_se_uap_v2_core_ablation.py \
+  --mode train \
+  --dataset libri \
+  --uap_family distribution \
+  --detector_loss on \
+  --detector_aggregation mean_logit \
+  --utterance_grad_clip \
+  --data_root /Data/chenyuying \
+  --speaker_model ./speaker_model/SincNet_LIBRI/epoch_23.pth \
+  --speaker_cfg ./config/libri_speaker_generator.cfg \
+  --timit_pretrained_detector ./output/pretrain_transformer_detector_utterance/transformer_utterance_detector_trained_on_timit.pth \
+  --train_objective utterance \
+  --eval_protocol utterance \
+  --train_wshift 3200 \
+  --eval_wshift 3200 \
+  --train_max_frames 16 \
+  --frame_loss_weight 0 \
+  --frame_random_offset \
+  --constraint_scope base \
+  --tau 2.0 \
+  --tau_start 2.0 \
+  --tau_schedule const \
+  --kappa 1.0 \
+  --alpha 0.1 \
+  --num_z 4 \
+  --random_phase \
+  --grad_clip 5 \
+  --batch_size 64 \
+  --epochs 20 \
+  --val_fraction 0.1 \
+  --pool_size 5 \
+  --pool_candidates 5 \
+  --device cuda:1 \
+  --output_dir ./output/core_ablation_libri_distribution_ld_on_meanlogit_gradclip5
